@@ -32,6 +32,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Slf4j
 @Service
@@ -123,6 +125,36 @@ public class SalesOrderService {
         response.put("totalAmount", order.getTotalAmount());
         response.put("lineItems", pendingLineItems.size());
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Map<String, Object>> list(Pageable pageable) {
+        Page<SalesOrder> orders = salesOrderRepository.findAll(pageable);
+        return orders.map(order -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", order.getId());
+            map.put("orderNumber", order.getOrderNumber());
+            map.put("orderDate", order.getOrderDate());
+            map.put("totalAmount", order.getTotalAmount());
+            map.put("paymentMethod", order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null);
+            map.put("customerName", order.getCustomer() != null ? order.getCustomer().getName() : null);
+            map.put("status", order.getStatus() != null ? order.getStatus().name() : null);
+            map.put("notes", order.getNotes());
+
+            List<OrderLineItem> items = lineItemRepository.findBySalesOrderId(order.getId());
+            List<Map<String, Object>> lineItems = new ArrayList<>();
+            for (OrderLineItem item : items) {
+                Map<String, Object> line = new LinkedHashMap<>();
+                line.put("productName", item.getFinishedProduct() != null ? item.getFinishedProduct().getProductName() : "—");
+                line.put("quantity", item.getQuantity());
+                line.put("unitPrice", item.getUnitPrice());
+                line.put("lineTotal", item.getLineTotal());
+                lineItems.add(line);
+            }
+            map.put("lineItems", lineItems);
+            map.put("itemCount", items.size());
+            return map;
+        });
     }
 
     public Map<String, Object> getInvoice(UUID orderId) {
@@ -243,6 +275,30 @@ public class SalesOrderService {
         salesOrderRepository.save(order);
         log.info("Cancelled order {}", order.getOrderNumber());
         return items.size();
+    }
+
+    @Transactional
+    public void ship(UUID orderId) {
+        SalesOrder order = salesOrderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        if (order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new InvalidOperationException("Only confirmed orders can be shipped");
+        }
+        order.setStatus(OrderStatus.SHIPPED);
+        salesOrderRepository.save(order);
+        log.info("Shipped order {}", order.getOrderNumber());
+    }
+
+    @Transactional
+    public void deliver(UUID orderId) {
+        SalesOrder order = salesOrderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        if (order.getStatus() != OrderStatus.SHIPPED) {
+            throw new InvalidOperationException("Only shipped orders can be delivered");
+        }
+        order.setStatus(OrderStatus.DELIVERED);
+        salesOrderRepository.save(order);
+        log.info("Delivered order {}", order.getOrderNumber());
     }
 
     private User resolveActor(User creator, String fallbackEmail) {

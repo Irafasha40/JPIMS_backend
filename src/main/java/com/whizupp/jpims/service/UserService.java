@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
     public Page<User> list(Pageable pageable) {
         return userRepository.findAll(pageable);
@@ -30,7 +31,7 @@ public class UserService {
         userRepository.findByEmail(request.getEmail()).ifPresent(u -> {
             throw new InvalidOperationException("Email already exists");
         });
-        return userRepository.save(User.builder()
+        User saved = userRepository.save(User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .phone(request.getPhone())
@@ -43,6 +44,8 @@ public class UserService {
                 .emailVerified(true)
                 .mustChangePassword(true)
                 .build());
+        auditService.log("create", "USER_MANAGEMENT", saved.getId().toString(), null, "Created user: " + saved.getEmail());
+        return saved;
     }
 
     public User getUser(UUID id) {
@@ -53,10 +56,14 @@ public class UserService {
     @Transactional
     public User updateUser(UUID id, User request) {
         User user = getUser(id);
+        String oldDetails = String.format("Name: %s, Dept: %s", user.getFullName(), user.getDepartment());
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
         user.setDepartment(request.getDepartment());
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        String newDetails = String.format("Name: %s, Dept: %s", saved.getFullName(), saved.getDepartment());
+        auditService.log("update", "USER_MANAGEMENT", saved.getId().toString(), oldDetails, "Updated user: " + newDetails);
+        return saved;
     }
 
     @Transactional
@@ -64,6 +71,7 @@ public class UserService {
         User user = getUser(id);
         user.setIsActive(false);
         userRepository.save(user);
+        auditService.log("delete", "USER_MANAGEMENT", user.getId().toString(), "ACTIVE", "Deactivated user: " + user.getEmail());
     }
 
     @Transactional
@@ -71,7 +79,9 @@ public class UserService {
         User user = getUser(id);
         user.setIsLocked(false);
         user.setLoginAttempts(0);
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        auditService.log("unlock", "USER_MANAGEMENT", saved.getId().toString(), "LOCKED", "Unlocked user account: " + saved.getEmail());
+        return saved;
     }
 
     @Transactional
@@ -79,6 +89,8 @@ public class UserService {
         User user = getUser(id);
         user.setPassword(passwordEncoder.encode(tempPassword));
         user.setMustChangePassword(true);
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        auditService.log("reset_password", "USER_MANAGEMENT", saved.getId().toString(), null, "Admin reset password for user: " + saved.getEmail());
+        return saved;
     }
 }

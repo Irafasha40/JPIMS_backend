@@ -2,6 +2,7 @@ package com.whizupp.jpims.controller;
 
 import com.whizupp.jpims.dto.response.DashboardResponse;
 import com.whizupp.jpims.service.DashboardService;
+import com.whizupp.jpims.service.DashboardSummaryService;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,10 +19,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class DashboardController {
     private final DashboardService dashboardService;
+    private final DashboardSummaryService dashboardSummaryService;
 
     @GetMapping
     public ResponseEntity<DashboardResponse> getDashboard() {
         return ResponseEntity.ok(dashboardService.getDashboard());
+    }
+
+    @GetMapping("/production-summary")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR','PRODUCTION_MANAGER')")
+    public ResponseEntity<Map<String, Object>> getProductionSummary() {
+        return ResponseEntity.ok(dashboardSummaryService.getProductionSummary());
+    }
+
+    @GetMapping("/inventory-summary")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR','INVENTORY_MANAGER')")
+    public ResponseEntity<Map<String, Object>> getInventorySummary() {
+        return ResponseEntity.ok(dashboardSummaryService.getInventorySummary());
+    }
+
+    @GetMapping("/sales-summary")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR','SALES_STAFF')")
+    public ResponseEntity<Map<String, Object>> getSalesSummary() {
+        return ResponseEntity.ok(dashboardSummaryService.getSalesSummary());
     }
 
     @GetMapping("/production-manager")

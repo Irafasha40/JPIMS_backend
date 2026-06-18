@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SalesOrderController {
     private final SalesOrderService salesOrderService;
     @GetMapping
-    public ResponseEntity<Page<Map<String, Object>>> list(Pageable pageable) { return ResponseEntity.ok(Page.empty(pageable)); }
+    public ResponseEntity<Page<Map<String, Object>>> list(Pageable pageable) { return ResponseEntity.ok(salesOrderService.list(pageable)); }
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> create(@RequestBody Map<String, Object> body, Authentication authentication) {
@@ -41,10 +41,16 @@ public class SalesOrderController {
     }
 
     @PutMapping("/{id}/ship")
-    public ResponseEntity<Map<String, Object>> ship(@PathVariable UUID id) { return ResponseEntity.ok(Map.of("id", id, "status", "SHIPPED")); }
+    public ResponseEntity<Map<String, Object>> ship(@PathVariable UUID id) {
+        salesOrderService.ship(id);
+        return ResponseEntity.ok(Map.of("id", id, "status", "SHIPPED"));
+    }
 
     @PutMapping("/{id}/deliver")
-    public ResponseEntity<Map<String, Object>> deliver(@PathVariable UUID id) { return ResponseEntity.ok(Map.of("id", id, "status", "DELIVERED")); }
+    public ResponseEntity<Map<String, Object>> deliver(@PathVariable UUID id) {
+        salesOrderService.deliver(id);
+        return ResponseEntity.ok(Map.of("id", id, "status", "DELIVERED"));
+    }
 
     @PutMapping("/{id}/cancel")
     public ResponseEntity<Map<String, Object>> cancel(@PathVariable UUID id, Authentication authentication) {

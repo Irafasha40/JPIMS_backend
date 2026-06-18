@@ -44,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService customUserDetailsService;
+    private final AuditService auditService;
 
     @Value("${app.auth.max-login-attempts:5}")
     private int maxLoginAttempts;
@@ -77,6 +78,7 @@ public class AuthServiceImpl implements AuthService {
                 .build());
 
         log.info("User registered: {}", saved.getEmail());
+        auditService.log("register", "USER_MANAGEMENT", saved.getId().toString(), null, "Registered user with email: " + saved.getEmail());
         return AuthResponse.builder()
                 .user(mapUser(saved))
                 .message("Verification email sent")
@@ -87,12 +89,17 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("Invalid credentials"));
+                .orElseThrow(() -> {
+                    auditService.log("login_failed", "AUTHENTICATION", null, null, "Failed login attempt: unknown email " + request.getEmail(), true);
+                    return new ResourceNotFoundException("Invalid credentials");
+                });
 
         if (!Boolean.TRUE.equals(user.getIsActive())) {
+            auditService.log("login_failed", "AUTHENTICATION", user.getId().toString(), null, "Failed login attempt: inactive account for " + request.getEmail(), true);
             throw new InvalidOperationException("Account is inactive");
         }
         if (Boolean.TRUE.equals(user.getIsLocked())) {
+            auditService.log("login_failed", "AUTHENTICATION", user.getId().toString(), null, "Failed login attempt: locked account for " + request.getEmail(), true);
             throw new AccountLockedException("Account is locked due to failed login attempts");
         }
 
@@ -103,9 +110,11 @@ public class AuthServiceImpl implements AuthService {
             if (attempts >= maxLoginAttempts) {
                 user.setIsLocked(true);
                 userRepository.save(user);
+                auditService.log("account_locked", "AUTHENTICATION", user.getId().toString(), null, "Account locked due to maximum failed login attempts for " + request.getEmail(), true);
                 throw new AccountLockedException("Account locked after maximum failed attempts");
             }
             userRepository.save(user);
+            auditService.log("login_failed", "AUTHENTICATION", user.getId().toString(), null, "Failed login attempt: invalid password for " + request.getEmail(), true);
             throw new ResourceNotFoundException("Invalid credentials");
         }
 
@@ -116,6 +125,7 @@ public class AuthServiceImpl implements AuthService {
 
         if (Boolean.TRUE.equals(user.getMustChangePassword())) {
             String tempToken = jwtUtil.generatePasswordChangeRequiredToken(userDetails);
+            auditService.log("login", "AUTHENTICATION", user.getId().toString(), null, "Temporary login: password change required for " + user.getEmail());
             throw new PasswordChangeRequiredException(tempToken);
         }
 
@@ -124,8 +134,11 @@ public class AuthServiceImpl implements AuthService {
 
         if (Boolean.TRUE.equals(user.getMfaEnabled())) {
             String tempToken = jwtUtil.generateToken(userDetails);
+            auditService.log("login", "AUTHENTICATION", user.getId().toString(), null, "Temporary login: MFA verification required for " + user.getEmail());
             throw new MfaRequiredException(tempToken);
         }
+
+        auditService.log("login", "AUTHENTICATION", user.getId().toString(), null, "User logged in successfully: " + user.getEmail());
 
         return AuthResponse.builder()
                 .accessToken(jwtUtil.generateToken(userDetails))
@@ -180,6 +193,8 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         AppUserDetails userDetails = (AppUserDetails) customUserDetailsService.loadUserByUsername(email);
+
+        auditService.log("mfa_verify", "AUTHENTICATION", user.getId().toString(), null, "MFA code verified for user: " + user.getEmail());
 
         return AuthResponse.builder()
                 .accessToken(jwtUtil.generateToken(userDetails))
@@ -351,6 +366,7 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        auditService.log("change_password", "USER_MANAGEMENT", user.getId().toString(), null, "User changed their password: " + user.getEmail());
         return MessageResponse.builder().message("Password changed successfully").build();
     }
 
