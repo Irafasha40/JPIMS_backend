@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,6 +48,7 @@ public class RecipeController {
                 .productName(body.getProductName())
                 .baseQuantity(body.getBaseQuantity())
                 .notes(body.getNotes())
+                .shelfLifeDays(body.getShelfLifeDays())
                 .build();
         Recipe created = recipeService.createRecipeWithIngredients(recipe, body.getIngredients());
         return ResponseEntity.status(201).body(mapToResponse(created));
@@ -66,6 +68,7 @@ public class RecipeController {
                 .productName(body.getProductName())
                 .baseQuantity(body.getBaseQuantity())
                 .notes(body.getNotes())
+                .shelfLifeDays(body.getShelfLifeDays())
                 .build();
         Recipe updated = recipeService.updateRecipe(id, recipe);
         recipeService.replaceIngredients(updated.getId(), body.getIngredients());
@@ -94,6 +97,13 @@ public class RecipeController {
     @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR')")
     public ResponseEntity<RecipeResponse> archive(@PathVariable UUID id) {
         return ResponseEntity.ok(mapToResponse(recipeService.archiveRecipe(id)));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        recipeService.deleteRecipe(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/clone")
@@ -132,6 +142,7 @@ public class RecipeController {
                 .baseQuantity(recipe.getBaseQuantity())
                 .status(recipe.getStatus() != null ? recipe.getStatus().toString() : null)
                 .notes(recipe.getNotes())
+                .shelfLifeDays(recipe.getShelfLifeDays())
                 .ingredients(ingredientResponses)
                 .build();
     }

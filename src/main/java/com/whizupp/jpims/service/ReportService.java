@@ -37,6 +37,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -87,7 +88,8 @@ public class ReportService {
                 batches = batches.stream()
                         .filter(b -> b.getProductionDate() != null && !b.getProductionDate().isBefore(fromDate))
                         .collect(Collectors.toList());
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
         }
 
         if (to != null && !to.isEmpty()) {
@@ -96,7 +98,8 @@ public class ReportService {
                 batches = batches.stream()
                         .filter(b -> b.getProductionDate() != null && !b.getProductionDate().isAfter(toDate))
                         .collect(Collectors.toList());
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
         }
 
         long totalBatches = batches.size();
@@ -141,7 +144,8 @@ public class ReportService {
             for (BatchIngredient ing : ingredients) {
                 if (Boolean.TRUE.equals(ing.getIsIssued()) && ing.getQuantityIssued() != null) {
                     String name = ing.getRawMaterial().getName();
-                    ingredientConsumption.put(name, ingredientConsumption.getOrDefault(name, BigDecimal.ZERO).add(ing.getQuantityIssued()));
+                    ingredientConsumption.put(name,
+                            ingredientConsumption.getOrDefault(name, BigDecimal.ZERO).add(ing.getQuantityIssued()));
                 }
             }
 
@@ -173,8 +177,8 @@ public class ReportService {
                     map.put("lossReason", b.getLossReason());
                     map.put("status", b.getStatus() != null ? b.getStatus().name() : null);
                     map.put("productionDate", b.getProductionDate() != null ? b.getProductionDate().toString() : null);
-                    map.put("startTime", b.getStartTime() != null ? b.getStartTime().toString() : null);
-                    map.put("completionTime", b.getCompletionTime() != null ? b.getCompletionTime().toString() : null);
+                    map.put("startTime", b.getStartTime() != null ? b.getStartTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) : null);
+                    map.put("completionTime", b.getCompletionTime() != null ? b.getCompletionTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : null);
                     return map;
                 }).collect(Collectors.toList());
 
@@ -192,7 +196,7 @@ public class ReportService {
             if (product != null) {
                 String pName = product.getProductName();
                 tests = tests.stream()
-                        .filter(t -> t.getProductionBatch() != null && t.getProductionBatch().getProductName() != null 
+                        .filter(t -> t.getProductionBatch() != null && t.getProductionBatch().getProductName() != null
                                 && t.getProductionBatch().getProductName().equalsIgnoreCase(pName))
                         .collect(Collectors.toList());
             } else {
@@ -200,7 +204,8 @@ public class ReportService {
                 if (recipe != null) {
                     String pName = recipe.getProductName();
                     tests = tests.stream()
-                            .filter(t -> t.getProductionBatch() != null && t.getProductionBatch().getProductName() != null 
+                            .filter(t -> t.getProductionBatch() != null
+                                    && t.getProductionBatch().getProductName() != null
                                     && t.getProductionBatch().getProductName().equalsIgnoreCase(pName))
                             .collect(Collectors.toList());
                 }
@@ -213,7 +218,8 @@ public class ReportService {
                 tests = tests.stream()
                         .filter(t -> t.getTestDate() != null && !t.getTestDate().toLocalDate().isBefore(fromDate))
                         .collect(Collectors.toList());
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
         }
 
         if (to != null && !to.isEmpty()) {
@@ -222,7 +228,8 @@ public class ReportService {
                 tests = tests.stream()
                         .filter(t -> t.getTestDate() != null && !t.getTestDate().toLocalDate().isAfter(toDate))
                         .collect(Collectors.toList());
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
         }
 
         long totalChecks = tests.size();
@@ -237,12 +244,11 @@ public class ReportService {
         Map<String, Integer> brixCounts = new LinkedHashMap<>();
 
         Map<String, Long> failureReasons = new LinkedHashMap<>();
-        long totalReviewDurationMinutes = 0;
-        long durationCounts = 0;
 
         for (QualityTest t : tests) {
-            String pName = (t.getProductionBatch() != null && t.getProductionBatch().getProductName() != null) 
-                    ? t.getProductionBatch().getProductName() : "Unknown Product";
+            String pName = (t.getProductionBatch() != null && t.getProductionBatch().getProductName() != null)
+                    ? t.getProductionBatch().getProductName()
+                    : "Unknown Product";
 
             if (t.getPhLevel() != null) {
                 sumPh.put(pName, sumPh.getOrDefault(pName, 0.0) + t.getPhLevel().doubleValue());
@@ -256,12 +262,6 @@ public class ReportService {
             if (t.getResult() == TestResult.FAIL && t.getNotes() != null && !t.getNotes().isEmpty()) {
                 String reason = t.getNotes();
                 failureReasons.put(reason, failureReasons.getOrDefault(reason, 0L) + 1);
-            }
-
-            if (t.getProductionBatch() != null && t.getProductionBatch().getCompletionTime() != null && t.getTestDate() != null) {
-                long duration = java.time.Duration.between(t.getProductionBatch().getCompletionTime(), t.getTestDate()).toMinutes();
-                totalReviewDurationMinutes += duration;
-                durationCounts++;
             }
         }
 
@@ -277,8 +277,6 @@ public class ReportService {
             avgBrixPerProduct.put(pName, count > 0 ? round(sumBrix.get(pName) / count, 2) : 0.0);
         }
 
-        double avgTimeToQcReviewMinutes = durationCounts > 0 ? (double) totalReviewDurationMinutes / durationCounts : 0.0;
-
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("totalQcChecks", totalChecks);
         summary.put("passRate", round(passRate, 2));
@@ -286,14 +284,15 @@ public class ReportService {
         summary.put("avgPhPerProduct", avgPhPerProduct);
         summary.put("avgBrixPerProduct", avgBrixPerProduct);
         summary.put("mostCommonFailureReasons", failureReasons);
-        summary.put("avgTimeToQcReviewMinutes", round(avgTimeToQcReviewMinutes, 2));
 
         List<Map<String, Object>> dataList = tests.stream()
                 .map(t -> {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("id", t.getId());
-                    map.put("batchNumber", t.getProductionBatch() != null ? t.getProductionBatch().getBatchNumber() : null);
-                    map.put("productName", t.getProductionBatch() != null ? t.getProductionBatch().getProductName() : null);
+                    map.put("batchNumber",
+                            t.getProductionBatch() != null ? t.getProductionBatch().getBatchNumber() : null);
+                    map.put("productName",
+                            t.getProductionBatch() != null ? t.getProductionBatch().getProductName() : null);
                     map.put("phLevel", t.getPhLevel());
                     map.put("brixLevel", t.getBrixLevel());
                     map.put("appearance", t.getAppearance() != null ? t.getAppearance().name() : null);
@@ -303,12 +302,6 @@ public class ReportService {
                     map.put("testDate", t.getTestDate() != null ? t.getTestDate().toString() : null);
                     map.put("testedBy", t.getTestedBy() != null ? t.getTestedBy().getFullName() : null);
                     map.put("notes", t.getNotes());
-
-                    long reviewMinutes = 0;
-                    if (t.getProductionBatch() != null && t.getProductionBatch().getCompletionTime() != null && t.getTestDate() != null) {
-                        reviewMinutes = java.time.Duration.between(t.getProductionBatch().getCompletionTime(), t.getTestDate()).toMinutes();
-                    }
-                    map.put("timeToQcReviewMinutes", reviewMinutes);
                     return map;
                 }).collect(Collectors.toList());
 
@@ -352,50 +345,16 @@ public class ReportService {
             BigDecimal cost = fp.getUnitCost() != null ? fp.getUnitCost() : BigDecimal.ZERO;
             BigDecimal val = qty.multiply(cost);
             totalFinishedGoodsValuation = totalFinishedGoodsValuation.add(val);
-            finishedValuation.put(fp.getProductName(), finishedValuation.getOrDefault(fp.getProductName(), BigDecimal.ZERO).add(val));
+            finishedValuation.put(fp.getProductName(),
+                    finishedValuation.getOrDefault(fp.getProductName(), BigDecimal.ZERO).add(val));
 
-            if (fp.getExpiryDate() != null && fp.getStatus() != FinishedProductStatus.EXPIRED) {
-                if (!fp.getExpiryDate().isBefore(today)) {
-                    if (!fp.getExpiryDate().isAfter(plus7)) {
-                        nearExpiry7Days++;
-                    }
-                    if (!fp.getExpiryDate().isAfter(plus30)) {
-                        nearExpiry30Days++;
-                    }
-                }
-            }
-        }
-
-        BigDecimal totalWastage = BigDecimal.ZERO;
-        OffsetDateTime fromTime = null;
-        OffsetDateTime toTime = null;
-        try {
-            if (from != null && !from.isEmpty()) fromTime = LocalDate.parse(from).atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime();
-            if (to != null && !to.isEmpty()) toTime = LocalDate.parse(to).atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime();
-        } catch (Exception e) {}
-
-        List<StockMovement> rmMovements = stockMovementRepository.findAll();
-        for (StockMovement mv : rmMovements) {
-            if (mv.getType() == StockMovementType.STOCK_OUT && mv.getNotes() != null) {
-                String notes = mv.getNotes().toLowerCase();
-                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap") || notes.contains("write-off") || notes.contains("written-off")) {
-                    if (fromTime != null && mv.getDate().isBefore(fromTime)) continue;
-                    if (toTime != null && mv.getDate().isAfter(toTime)) continue;
-                    BigDecimal cost = mv.getRawMaterial().getCostPerUnit() != null ? mv.getRawMaterial().getCostPerUnit() : BigDecimal.ZERO;
-                    totalWastage = totalWastage.add(mv.getQuantity().multiply(cost));
-                }
-            }
-        }
-
-        List<FinishedProductMovement> fpMovements = finishedProductMovementRepository.findAll();
-        for (FinishedProductMovement mv : fpMovements) {
-            if ((mv.getType() == FinishedProductMovementType.ADJUSTMENT || mv.getType() == FinishedProductMovementType.RECALL) && mv.getNotes() != null) {
-                String notes = mv.getNotes().toLowerCase();
-                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap") || notes.contains("write-off") || notes.contains("written-off")) {
-                    if (fromTime != null && mv.getDate().isBefore(fromTime)) continue;
-                    if (toTime != null && mv.getDate().isAfter(toTime)) continue;
-                    BigDecimal cost = mv.getFinishedProduct().getUnitCost() != null ? mv.getFinishedProduct().getUnitCost() : BigDecimal.ZERO;
-                    totalWastage = totalWastage.add(mv.getQuantity().multiply(cost));
+            if (fp.getExpiryDate() != null
+                    && fp.getStatus() != FinishedProductStatus.EXPIRED
+                    && fp.getStatus() != FinishedProductStatus.OUT_OF_STOCK) {
+                if (!fp.getExpiryDate().isBefore(today) && !fp.getExpiryDate().isAfter(plus7)) {
+                    nearExpiry7Days++;
+                } else if (!fp.getExpiryDate().isBefore(today) && !fp.getExpiryDate().isAfter(plus30)) {
+                    nearExpiry30Days++;
                 }
             }
         }
@@ -408,7 +367,6 @@ public class ReportService {
         summary.put("totalFinishedGoodsValuation", totalFinishedGoodsValuation);
         summary.put("nearExpiryWithin7Days", nearExpiry7Days);
         summary.put("nearExpiryWithin30Days", nearExpiry30Days);
-        summary.put("totalWastage", totalWastage);
 
         List<Map<String, Object>> dataList = new ArrayList<>();
         for (RawMaterial rm : rawMaterials) {
@@ -458,7 +416,7 @@ public class ReportService {
 
         if (customer != null && !customer.isEmpty()) {
             orders = orders.stream()
-                    .filter(o -> o.getCustomer() != null && (o.getCustomer().getId().toString().equals(customer) 
+                    .filter(o -> o.getCustomer() != null && (o.getCustomer().getId().toString().equals(customer)
                             || o.getCustomer().getName().equalsIgnoreCase(customer)))
                     .collect(Collectors.toList());
         }
@@ -469,7 +427,8 @@ public class ReportService {
                 orders = orders.stream()
                         .filter(o -> o.getOrderDate() != null && !o.getOrderDate().isBefore(fromDate))
                         .collect(Collectors.toList());
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
         }
 
         if (to != null && !to.isEmpty()) {
@@ -478,7 +437,8 @@ public class ReportService {
                 orders = orders.stream()
                         .filter(o -> o.getOrderDate() != null && !o.getOrderDate().isAfter(toDate))
                         .collect(Collectors.toList());
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
         }
 
         long confirmedOrders = 0;
@@ -496,10 +456,13 @@ public class ReportService {
             List<OrderLineItem> items = orderLineItemRepository.findBySalesOrderId(o.getId());
 
             if (filterProductId != null) {
-                boolean hasProduct = items.stream().anyMatch(item -> item.getFinishedProduct().getId().equals(filterProductId) 
-                        || (item.getFinishedProduct().getProductName() != null 
-                            && item.getFinishedProduct().getProductName().equalsIgnoreCase(filterProductId.toString())));
-                if (!hasProduct) continue;
+                boolean hasProduct = items.stream()
+                        .anyMatch(item -> item.getFinishedProduct().getId().equals(filterProductId)
+                                || (item.getFinishedProduct().getProductName() != null
+                                        && item.getFinishedProduct().getProductName()
+                                                .equalsIgnoreCase(filterProductId.toString())));
+                if (!hasProduct)
+                    continue;
             }
 
             finalFilteredOrders.add(o);
@@ -517,7 +480,8 @@ public class ReportService {
 
             for (OrderLineItem item : items) {
                 String pName = item.getFinishedProduct().getProductName();
-                totalQuantitySoldByProduct.put(pName, totalQuantitySoldByProduct.getOrDefault(pName, BigDecimal.ZERO).add(item.getQuantity()));
+                totalQuantitySoldByProduct.put(pName,
+                        totalQuantitySoldByProduct.getOrDefault(pName, BigDecimal.ZERO).add(item.getQuantity()));
             }
 
             if (o.getCustomer() != null) {
@@ -526,13 +490,15 @@ public class ReportService {
             }
 
             if (o.getOrderDate() != null) {
-                String period = o.getOrderDate().getYear() + "-" + String.format("%02d", o.getOrderDate().getMonthValue());
+                String period = o.getOrderDate().getYear() + "-"
+                        + String.format("%02d", o.getOrderDate().getMonthValue());
                 ordersByPeriod.put(period, ordersByPeriod.getOrDefault(period, 0L) + 1);
             }
         }
 
-        double fulfillmentRate = (confirmedOrders + cancelledOrders) > 0 
-                ? (double) confirmedOrders / (confirmedOrders + cancelledOrders) * 100 : 0.0;
+        double fulfillmentRate = (confirmedOrders + cancelledOrders) > 0
+                ? (double) confirmedOrders / (confirmedOrders + cancelledOrders) * 100
+                : 0.0;
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("totalOrders", finalFilteredOrders.size());
@@ -576,7 +542,8 @@ public class ReportService {
         LocalDate compToDate = fromDate.minusDays(1);
         LocalDate compFromDate = compToDate.minusDays(days - 1);
         OffsetDateTime compStart = compFromDate.atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime();
-        OffsetDateTime compEnd = compToDate.atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime();
+        OffsetDateTime compEnd = compToDate.atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault())
+                .toOffsetDateTime();
 
         BigDecimal comparisonPeriodWastageCost = calculateWastageCostInPeriod(compStart, compEnd);
 
@@ -590,14 +557,19 @@ public class ReportService {
         for (StockMovement mv : rmMovements) {
             if (mv.getType() == StockMovementType.STOCK_OUT && mv.getNotes() != null) {
                 String notes = mv.getNotes().toLowerCase();
-                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap") || notes.contains("write-off") || notes.contains("written-off")) {
-                    if (mv.getDate().isBefore(start) || mv.getDate().isAfter(end)) continue;
-                    BigDecimal price = mv.getRawMaterial().getCostPerUnit() != null ? mv.getRawMaterial().getCostPerUnit() : BigDecimal.ZERO;
+                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap")
+                        || notes.contains("write-off") || notes.contains("written-off")) {
+                    if (mv.getDate().isBefore(start) || mv.getDate().isAfter(end))
+                        continue;
+                    BigDecimal price = mv.getRawMaterial().getCostPerUnit() != null
+                            ? mv.getRawMaterial().getCostPerUnit()
+                            : BigDecimal.ZERO;
                     BigDecimal estCost = mv.getQuantity().multiply(price);
                     totalWastageQuantity = totalWastageQuantity.add(mv.getQuantity());
 
                     String name = mv.getRawMaterial().getName();
-                    wastageByMaterial.put(name, wastageByMaterial.getOrDefault(name, BigDecimal.ZERO).add(mv.getQuantity()));
+                    wastageByMaterial.put(name,
+                            wastageByMaterial.getOrDefault(name, BigDecimal.ZERO).add(mv.getQuantity()));
 
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("type", "MATERIAL");
@@ -615,16 +587,22 @@ public class ReportService {
 
         List<FinishedProductMovement> fpMovements = finishedProductMovementRepository.findAll();
         for (FinishedProductMovement mv : fpMovements) {
-            if ((mv.getType() == FinishedProductMovementType.ADJUSTMENT || mv.getType() == FinishedProductMovementType.RECALL) && mv.getNotes() != null) {
+            if ((mv.getType() == FinishedProductMovementType.ADJUSTMENT
+                    || mv.getType() == FinishedProductMovementType.RECALL) && mv.getNotes() != null) {
                 String notes = mv.getNotes().toLowerCase();
-                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap") || notes.contains("write-off") || notes.contains("written-off")) {
-                    if (mv.getDate().isBefore(start) || mv.getDate().isAfter(end)) continue;
-                    BigDecimal price = mv.getFinishedProduct().getUnitCost() != null ? mv.getFinishedProduct().getUnitCost() : BigDecimal.ZERO;
+                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap")
+                        || notes.contains("write-off") || notes.contains("written-off")) {
+                    if (mv.getDate().isBefore(start) || mv.getDate().isAfter(end))
+                        continue;
+                    BigDecimal price = mv.getFinishedProduct().getUnitCost() != null
+                            ? mv.getFinishedProduct().getUnitCost()
+                            : BigDecimal.ZERO;
                     BigDecimal estCost = mv.getQuantity().multiply(price);
                     totalWastageQuantity = totalWastageQuantity.add(mv.getQuantity());
 
                     String name = mv.getFinishedProduct().getProductName();
-                    wastageByProduct.put(name, wastageByProduct.getOrDefault(name, BigDecimal.ZERO).add(mv.getQuantity()));
+                    wastageByProduct.put(name,
+                            wastageByProduct.getOrDefault(name, BigDecimal.ZERO).add(mv.getQuantity()));
 
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("type", "PRODUCT");
@@ -659,10 +637,15 @@ public class ReportService {
         for (StockMovement mv : rmMovements) {
             if (mv.getType() == StockMovementType.STOCK_OUT && mv.getNotes() != null) {
                 String notes = mv.getNotes().toLowerCase();
-                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap") || notes.contains("write-off") || notes.contains("written-off")) {
-                    if (start != null && mv.getDate().isBefore(start)) continue;
-                    if (end != null && mv.getDate().isAfter(end)) continue;
-                    BigDecimal price = mv.getRawMaterial().getCostPerUnit() != null ? mv.getRawMaterial().getCostPerUnit() : BigDecimal.ZERO;
+                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap")
+                        || notes.contains("write-off") || notes.contains("written-off")) {
+                    if (start != null && mv.getDate().isBefore(start))
+                        continue;
+                    if (end != null && mv.getDate().isAfter(end))
+                        continue;
+                    BigDecimal price = mv.getRawMaterial().getCostPerUnit() != null
+                            ? mv.getRawMaterial().getCostPerUnit()
+                            : BigDecimal.ZERO;
                     cost = cost.add(mv.getQuantity().multiply(price));
                 }
             }
@@ -670,12 +653,18 @@ public class ReportService {
 
         List<FinishedProductMovement> fpMovements = finishedProductMovementRepository.findAll();
         for (FinishedProductMovement mv : fpMovements) {
-            if ((mv.getType() == FinishedProductMovementType.ADJUSTMENT || mv.getType() == FinishedProductMovementType.RECALL) && mv.getNotes() != null) {
+            if ((mv.getType() == FinishedProductMovementType.ADJUSTMENT
+                    || mv.getType() == FinishedProductMovementType.RECALL) && mv.getNotes() != null) {
                 String notes = mv.getNotes().toLowerCase();
-                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap") || notes.contains("write-off") || notes.contains("written-off")) {
-                    if (start != null && mv.getDate().isBefore(start)) continue;
-                    if (end != null && mv.getDate().isAfter(end)) continue;
-                    BigDecimal price = mv.getFinishedProduct().getUnitCost() != null ? mv.getFinishedProduct().getUnitCost() : BigDecimal.ZERO;
+                if (notes.contains("waste") || notes.contains("expired") || notes.contains("scrap")
+                        || notes.contains("write-off") || notes.contains("written-off")) {
+                    if (start != null && mv.getDate().isBefore(start))
+                        continue;
+                    if (end != null && mv.getDate().isAfter(end))
+                        continue;
+                    BigDecimal price = mv.getFinishedProduct().getUnitCost() != null
+                            ? mv.getFinishedProduct().getUnitCost()
+                            : BigDecimal.ZERO;
                     cost = cost.add(mv.getQuantity().multiply(price));
                 }
             }
@@ -683,8 +672,114 @@ public class ReportService {
         return cost;
     }
 
+    public Map<String, Object> getStockMovementsReport(String from, String to, String materialId) {
+        List<StockMovement> movements = stockMovementRepository.findAll();
+        List<FinishedProductMovement> fpMovements = finishedProductMovementRepository.findAll();
+
+        if (materialId != null && !materialId.isEmpty()) {
+            movements = movements.stream()
+                    .filter(m -> m.getRawMaterial() != null && m.getRawMaterial().getId().toString().equals(materialId))
+                    .collect(Collectors.toList());
+        }
+
+        OffsetDateTime start = null;
+        OffsetDateTime end = null;
+        try {
+            if (from != null && !from.isEmpty()) {
+                start = LocalDate.parse(from).atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
+            }
+            if (to != null && !to.isEmpty()) {
+                end = LocalDate.parse(to).atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toOffsetDateTime();
+            }
+        } catch (Exception ignored) {
+        }
+
+        final OffsetDateTime startFilter = start;
+        final OffsetDateTime endFilter = end;
+        if (startFilter != null) {
+            movements = movements.stream().filter(m -> m.getDate().isAfter(startFilter)).collect(Collectors.toList());
+        }
+        if (endFilter != null) {
+            movements = movements.stream().filter(m -> m.getDate().isBefore(endFilter)).collect(Collectors.toList());
+        }
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("totalRawMaterialMovements", movements.size());
+        summary.put("totalFinishedProductMovements", fpMovements.size());
+
+        BigDecimal totalStockInValue = BigDecimal.ZERO;
+        BigDecimal totalStockOutValue = BigDecimal.ZERO;
+
+        List<Map<String, Object>> rmDataList = new ArrayList<>();
+        for (StockMovement m : movements) {
+            if (m.getType() == StockMovementType.STOCK_IN) {
+                BigDecimal val = m.getQuantity()
+                        .multiply(m.getRawMaterial().getCostPerUnit() != null ? m.getRawMaterial().getCostPerUnit()
+                                : BigDecimal.ZERO);
+                totalStockInValue = totalStockInValue.add(val);
+            } else {
+                BigDecimal val = m.getQuantity()
+                        .multiply(m.getRawMaterial().getCostPerUnit() != null ? m.getRawMaterial().getCostPerUnit()
+                                : BigDecimal.ZERO);
+                totalStockOutValue = totalStockOutValue.add(val);
+            }
+
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", "RAW_MATERIAL");
+            map.put("id", m.getId());
+            map.put("materialName", m.getRawMaterial().getName());
+            map.put("movementType", m.getType() != null ? m.getType().name() : null);
+            map.put("quantity", m.getQuantity());
+            map.put("date", m.getDate() != null ? m.getDate().toLocalDate().toString() : null);
+            map.put("reference", m.getReferenceNumber());
+            map.put("notes", m.getNotes());
+            rmDataList.add(map);
+        }
+
+        List<Map<String, Object>> fpDataList = new ArrayList<>();
+        for (FinishedProductMovement m : fpMovements) {
+            BigDecimal val = m.getQuantity()
+                    .multiply(m.getFinishedProduct().getUnitCost() != null ? m.getFinishedProduct().getUnitCost()
+                            : BigDecimal.ZERO);
+            if (m.getType() == FinishedProductMovementType.PRODUCTION_IN) {
+                totalStockInValue = totalStockInValue.add(val);
+            } else if (m.getType() == FinishedProductMovementType.SALES_OUT) {
+                totalStockOutValue = totalStockOutValue.add(val);
+            }
+
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("type", "FINISHED_PRODUCT");
+            map.put("id", m.getId());
+            map.put("productName", m.getFinishedProduct().getProductName());
+            map.put("movementType", m.getType() != null ? m.getType().name() : null);
+            map.put("quantity", m.getQuantity());
+            map.put("date", m.getDate() != null ? m.getDate().toLocalDate().toString() : null);
+            map.put("reference", m.getReferenceId());
+            map.put("notes", m.getNotes());
+            fpDataList.add(map);
+        }
+
+        summary.put("totalStockInValue", totalStockInValue);
+        summary.put("totalStockOutValue", totalStockOutValue);
+
+        List<Map<String, Object>> allData = new ArrayList<>();
+        allData.addAll(rmDataList);
+        allData.addAll(fpDataList);
+        allData.sort((a, b) -> {
+            String aDate = (String) a.get("date");
+            String bDate = (String) b.get("date");
+            return bDate != null && aDate != null ? bDate.compareTo(aDate) : 0;
+        });
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("summary", summary);
+        report.put("data", allData);
+        return report;
+    }
+
     private double round(double value, int places) {
-        if (places < 0) throw new IllegalArgumentException();
+        if (places < 0)
+            throw new IllegalArgumentException();
         BigDecimal bd = BigDecimal.valueOf(value);
         bd = bd.setScale(places, RoundingMode.HALF_UP);
         return bd.doubleValue();
@@ -713,7 +808,8 @@ public class ReportService {
             } catch (Exception e) {
                 try {
                     deliveryTime = LocalTime.parse(timeStr + ":00");
-                } catch (Exception ex) {}
+                } catch (Exception ex) {
+                }
             }
         }
 
@@ -760,7 +856,8 @@ public class ReportService {
                 } catch (Exception e) {
                     try {
                         report.setDeliveryTime(LocalTime.parse(timeStr + ":00"));
-                    } catch (Exception ex) {}
+                    } catch (Exception ex) {
+                    }
                 }
             }
         }

@@ -88,9 +88,11 @@ public class FinishedProductService {
         issuePackaging(plan, batch, actorEmail);
 
         String lotNumber = batch.getBatchNumber();
-        LocalDate expiry = batch.getProductionDate() != null
-                ? batch.getProductionDate().plusDays(shelfLifeDays)
-                : LocalDate.now().plusDays(shelfLifeDays);
+        LocalDate productionDate = batch.getProductionDate() != null ? batch.getProductionDate() : LocalDate.now();
+        Integer shelfLifeDays = batch.getRecipe() != null && batch.getRecipe().getShelfLifeDays() != null
+                ? batch.getRecipe().getShelfLifeDays()
+                : this.shelfLifeDays;
+        LocalDate expiry = productionDate.plusDays(shelfLifeDays);
 
         FinishedProduct product = FinishedProduct.builder()
                 .productionBatch(batch)
@@ -184,5 +186,30 @@ public class FinishedProductService {
                 .batchId(batch != null ? batch.getId() : null)
                 .batchNumber(batch != null ? batch.getBatchNumber() : null)
                 .build();
+    }
+
+    @Transactional
+    public FinishedProduct updateStatus(UUID id, FinishedProductStatus newStatus, String actorEmail) {
+        FinishedProduct product = finishedProductRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Finished product not found"));
+        
+        User actor = userRepository.findByEmail(actorEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        FinishedProductStatus oldStatus = product.getStatus();
+        product.setStatus(newStatus);
+        FinishedProduct saved = finishedProductRepository.save(product);
+        
+        finishedProductMovementRepository.save(FinishedProductMovement.builder()
+                .finishedProduct(saved)
+                .recordedBy(actor)
+                .type(FinishedProductMovementType.ADJUSTMENT)
+                .quantity(BigDecimal.ZERO)
+                .date(OffsetDateTime.now())
+                .notes("Status changed from " + oldStatus + " to " + newStatus)
+                .build());
+        
+        log.info("Finished product {} status changed from {} to {}", saved.getId(), oldStatus, newStatus);
+        return saved;
     }
 }

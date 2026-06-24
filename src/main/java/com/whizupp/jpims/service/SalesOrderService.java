@@ -217,7 +217,7 @@ public class SalesOrderService {
 
             product.setQuantity(next);
             if (next.compareTo(BigDecimal.ZERO) == 0) {
-                product.setStatus(FinishedProductStatus.EXPIRED);
+                product.setStatus(FinishedProductStatus.OUT_OF_STOCK);
             }
             finishedProductRepository.save(product);
 
@@ -252,7 +252,9 @@ public class SalesOrderService {
                 FinishedProduct product = finishedProductRepository.findById(item.getFinishedProduct().getId())
                         .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
                 product.setQuantity(product.getQuantity().add(item.getQuantity()));
-                if (product.getStatus() == FinishedProductStatus.EXPIRED && product.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
+                if (product.getStatus() == FinishedProductStatus.OUT_OF_STOCK && product.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
+                    product.setStatus(FinishedProductStatus.AVAILABLE);
+                } else if (product.getStatus() == FinishedProductStatus.EXPIRED && product.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
                     product.setStatus(FinishedProductStatus.AVAILABLE);
                 }
                 finishedProductRepository.save(product);

@@ -4,6 +4,7 @@ import com.whizupp.jpims.entity.FinishedProduct;
 import com.whizupp.jpims.enums.DomainEnums.FinishedProductStatus;
 import com.whizupp.jpims.repository.FinishedProductRepository;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,14 +33,6 @@ public class ExpiryMonitoringService {
                         notificationService.notifyNearExpiry(product);
                     }
                 });
-
-        finishedProductRepository.findByExpiryDateLessThanEqual(LocalDate.now())
-                .forEach(product -> {
-                    if (product.getStatus() == FinishedProductStatus.AVAILABLE
-                            || product.getStatus() == FinishedProductStatus.NEAR_EXPIRY) {
-                        product.setStatus(FinishedProductStatus.EXPIRED);
-                    }
-                });
-        log.debug("Expiry monitoring check completed");
+        log.debug("Expiry monitoring check completed - products marked NEAR_EXPIRY only (manual expiry marking required)");
     }
 }

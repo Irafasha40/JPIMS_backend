@@ -56,12 +56,13 @@ public class UserService {
     @Transactional
     public User updateUser(UUID id, User request) {
         User user = getUser(id);
-        String oldDetails = String.format("Name: %s, Dept: %s", user.getFullName(), user.getDepartment());
-        user.setFullName(request.getFullName());
-        user.setPhone(request.getPhone());
-        user.setDepartment(request.getDepartment());
+        String oldDetails = String.format("Name: %s, Dept: %s, Role: %s", user.getFullName(), user.getDepartment(), user.getRole());
+        if (request.getFullName() != null) user.setFullName(request.getFullName());
+        if (request.getPhone() != null) user.setPhone(request.getPhone());
+        if (request.getDepartment() != null) user.setDepartment(request.getDepartment());
+        if (request.getRole() != null) user.setRole(request.getRole());
         User saved = userRepository.save(user);
-        String newDetails = String.format("Name: %s, Dept: %s", saved.getFullName(), saved.getDepartment());
+        String newDetails = String.format("Name: %s, Dept: %s, Role: %s", saved.getFullName(), saved.getDepartment(), saved.getRole());
         auditService.log("update", "USER_MANAGEMENT", saved.getId().toString(), oldDetails, "Updated user: " + newDetails);
         return saved;
     }

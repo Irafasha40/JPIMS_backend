@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class ReportController {
 
     private final ReportService reportService;
+    private final com.whizupp.jpims.repository.UserRepository userRepository;
 
     @GetMapping("/production")
     @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'PRODUCTION_MANAGER')")
@@ -30,22 +31,26 @@ public class ReportController {
             @RequestParam(required = false) UUID recipeId,
             @RequestParam(required = false) String export) {
         Map<String, Object> report = reportService.getProductionReport(from, to, recipeId);
+        String generatedBy = getCreatedBy();
         if ("pdf".equalsIgnoreCase(export)) {
             byte[] pdfBytes = ReportGenerator.generatePdf(
                     "Production Report",
                     (Map<String, Object>) report.get("summary"),
                     (List<Map<String, Object>>) report.get("data"),
                     from,
-                    to
+                    to,
+                    generatedBy
             );
             return fileResponse(pdfBytes, "production_report.pdf", "application/pdf");
         } else if ("excel".equalsIgnoreCase(export)) {
             byte[] excelBytes = ReportGenerator.generateExcel(
                     "Production Report",
                     (Map<String, Object>) report.get("summary"),
-                    (List<Map<String, Object>>) report.get("data")
+                    (List<Map<String, Object>>) report.get("data"),
+                    generatedBy
             );
-            return fileResponse(excelBytes, "production_report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            return fileResponse(excelBytes, "production_report.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         }
         return ResponseEntity.ok(report);
     }
@@ -59,22 +64,26 @@ public class ReportController {
             @RequestParam(required = false) UUID productId,
             @RequestParam(required = false) String export) {
         Map<String, Object> report = reportService.getQualityReport(from, to, productId);
+        String generatedBy = getCreatedBy();
         if ("pdf".equalsIgnoreCase(export)) {
             byte[] pdfBytes = ReportGenerator.generatePdf(
                     "Quality Performance Report",
                     (Map<String, Object>) report.get("summary"),
                     (List<Map<String, Object>>) report.get("data"),
                     from,
-                    to
+                    to,
+                    generatedBy
             );
             return fileResponse(pdfBytes, "quality_report.pdf", "application/pdf");
         } else if ("excel".equalsIgnoreCase(export)) {
             byte[] excelBytes = ReportGenerator.generateExcel(
                     "Quality Performance Report",
                     (Map<String, Object>) report.get("summary"),
-                    (List<Map<String, Object>>) report.get("data")
+                    (List<Map<String, Object>>) report.get("data"),
+                    generatedBy
             );
-            return fileResponse(excelBytes, "quality_report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            return fileResponse(excelBytes, "quality_report.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         }
         return ResponseEntity.ok(report);
     }
@@ -87,22 +96,26 @@ public class ReportController {
             @RequestParam(required = false) String to,
             @RequestParam(required = false) String export) {
         Map<String, Object> report = reportService.getInventoryReport(from, to);
+        String generatedBy = getCreatedBy();
         if ("pdf".equalsIgnoreCase(export)) {
             byte[] pdfBytes = ReportGenerator.generatePdf(
                     "Inventory Report",
                     (Map<String, Object>) report.get("summary"),
                     (List<Map<String, Object>>) report.get("data"),
                     from,
-                    to
+                    to,
+                    generatedBy
             );
             return fileResponse(pdfBytes, "inventory_report.pdf", "application/pdf");
         } else if ("excel".equalsIgnoreCase(export)) {
             byte[] excelBytes = ReportGenerator.generateExcel(
                     "Inventory Report",
                     (Map<String, Object>) report.get("summary"),
-                    (List<Map<String, Object>>) report.get("data")
+                    (List<Map<String, Object>>) report.get("data"),
+                    generatedBy
             );
-            return fileResponse(excelBytes, "inventory_report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            return fileResponse(excelBytes, "inventory_report.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         }
         return ResponseEntity.ok(report);
     }
@@ -117,22 +130,26 @@ public class ReportController {
             @RequestParam(required = false) String customer,
             @RequestParam(required = false) String export) {
         Map<String, Object> report = reportService.getSalesReport(from, to, productId, customer);
+        String generatedBy = getCreatedBy();
         if ("pdf".equalsIgnoreCase(export)) {
             byte[] pdfBytes = ReportGenerator.generatePdf(
                     "Sales Report",
                     (Map<String, Object>) report.get("summary"),
                     (List<Map<String, Object>>) report.get("data"),
                     from,
-                    to
+                    to,
+                    generatedBy
             );
             return fileResponse(pdfBytes, "sales_report.pdf", "application/pdf");
         } else if ("excel".equalsIgnoreCase(export)) {
             byte[] excelBytes = ReportGenerator.generateExcel(
                     "Sales Report",
                     (Map<String, Object>) report.get("summary"),
-                    (List<Map<String, Object>>) report.get("data")
+                    (List<Map<String, Object>>) report.get("data"),
+                    generatedBy
             );
-            return fileResponse(excelBytes, "sales_report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            return fileResponse(excelBytes, "sales_report.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         }
         return ResponseEntity.ok(report);
     }
@@ -145,22 +162,58 @@ public class ReportController {
             @RequestParam(required = false) String to,
             @RequestParam(required = false) String export) {
         Map<String, Object> report = reportService.getWastageReport(from, to);
+        String generatedBy = getCreatedBy();
         if ("pdf".equalsIgnoreCase(export)) {
             byte[] pdfBytes = ReportGenerator.generatePdf(
                     "Wastage Report",
                     (Map<String, Object>) report.get("summary"),
                     (List<Map<String, Object>>) report.get("data"),
                     from,
-                    to
+                    to,
+                    generatedBy
             );
             return fileResponse(pdfBytes, "wastage_report.pdf", "application/pdf");
         } else if ("excel".equalsIgnoreCase(export)) {
             byte[] excelBytes = ReportGenerator.generateExcel(
                     "Wastage Report",
                     (Map<String, Object>) report.get("summary"),
-                    (List<Map<String, Object>>) report.get("data")
+                    (List<Map<String, Object>>) report.get("data"),
+                    generatedBy
             );
-            return fileResponse(excelBytes, "wastage_report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            return fileResponse(excelBytes, "wastage_report.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+        return ResponseEntity.ok(report);
+    }
+
+    @GetMapping("/stock-movements")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR','PRODUCTION_MANAGER','INVENTORY_MANAGER')")
+    public ResponseEntity<?> stockMovements(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String materialId,
+            @RequestParam(required = false) String export) {
+        Map<String, Object> report = reportService.getStockMovementsReport(from, to, materialId);
+        String generatedBy = getCreatedBy();
+        if ("pdf".equalsIgnoreCase(export)) {
+            byte[] pdfBytes = ReportGenerator.generatePdf(
+                    "Stock Movements Report",
+                    (Map<String, Object>) report.get("summary"),
+                    (List<Map<String, Object>>) report.get("data"),
+                    from,
+                    to,
+                    generatedBy
+            );
+            return fileResponse(pdfBytes, "stock_movements_report.pdf", "application/pdf");
+        } else if ("excel".equalsIgnoreCase(export)) {
+            byte[] excelBytes = ReportGenerator.generateExcel(
+                    "Stock Movements Report",
+                    (Map<String, Object>) report.get("summary"),
+                    (List<Map<String, Object>>) report.get("data"),
+                    generatedBy
+            );
+            return fileResponse(excelBytes, "stock_movements_report.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         }
         return ResponseEntity.ok(report);
     }
@@ -173,13 +226,15 @@ public class ReportController {
 
     @PostMapping("/scheduled")
     @PreAuthorize("hasAnyRole('ADMINISTRATOR','PRODUCTION_MANAGER','INVENTORY_MANAGER')")
-    public ResponseEntity<Map<String, Object>> createScheduled(@RequestBody Map<String, Object> body, Authentication authentication) {
+    public ResponseEntity<Map<String, Object>> createScheduled(@RequestBody Map<String, Object> body,
+            Authentication authentication) {
         return ResponseEntity.status(201).body(reportService.createScheduledReport(body, authentication.getName()));
     }
 
     @PutMapping("/scheduled/{id}")
     @PreAuthorize("hasAnyRole('ADMINISTRATOR','PRODUCTION_MANAGER','INVENTORY_MANAGER')")
-    public ResponseEntity<Map<String, Object>> updateScheduled(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> updateScheduled(@PathVariable UUID id,
+            @RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(reportService.updateScheduledReport(id, body));
     }
 
@@ -188,6 +243,21 @@ public class ReportController {
     public ResponseEntity<Map<String, Object>> deleteScheduled(@PathVariable UUID id) {
         reportService.deleteScheduledReport(id);
         return ResponseEntity.ok(Map.of("id", id));
+    }
+
+    private String getCreatedBy() {
+        try {
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)) {
+                String email = auth.getName();
+                return userRepository.findByEmail(email)
+                        .map(com.whizupp.jpims.entity.User::getFullName)
+                        .orElse(email);
+            }
+        } catch (Exception e) {
+            // fallback
+        }
+        return "System";
     }
 
     private ResponseEntity<byte[]> fileResponse(byte[] bytes, String fileName, String contentType) {

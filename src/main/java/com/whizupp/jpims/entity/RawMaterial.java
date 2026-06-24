@@ -3,6 +3,7 @@ package com.whizupp.jpims.entity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.*;
 
@@ -30,6 +31,8 @@ public class RawMaterial extends BaseAuditEntity {
 
     @Builder.Default
     private Boolean isActive = true;
+
+    private LocalDate expiryDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")

@@ -1,6 +1,7 @@
 package com.whizupp.jpims.dto.response;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,5 +21,6 @@ public class RawMaterialResponse {
     private BigDecimal minimumThreshold;
     private BigDecimal costPerUnit;
     private Boolean isActive;
+    private LocalDate expiryDate;
     private SupplierResponse supplier;
 }

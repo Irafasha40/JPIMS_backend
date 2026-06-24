@@ -23,6 +23,9 @@ public class ProductionBatchResponse {
     private String lossReason;
     private String status;
     private LocalDate productionDate;
+    private UUID recipeId;
+    private String recipeName;
+    private Integer shelfLifeDays;
     private String assignedTo;
     private Boolean finishedGoodsTransferred;
     private List<IngredientLine> ingredients;

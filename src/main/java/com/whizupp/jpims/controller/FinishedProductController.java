@@ -3,6 +3,7 @@ package com.whizupp.jpims.controller;
 import com.whizupp.jpims.dto.request.FinishedProductRequest;
 import com.whizupp.jpims.dto.response.FinishedProductResponse;
 import com.whizupp.jpims.entity.FinishedProduct;
+import com.whizupp.jpims.enums.DomainEnums.FinishedProductStatus;
 import com.whizupp.jpims.service.FinishedProductService;
 import jakarta.validation.Valid;
 import java.util.Map;
@@ -68,8 +69,18 @@ public class FinishedProductController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('INVENTORY_MANAGER','ADMINISTRATOR')")
-    public ResponseEntity<Map<String, Object>> updateStatus(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(body);
+    public ResponseEntity<Map<String, Object>> updateStatus(
+            @PathVariable UUID id, 
+            @RequestBody Map<String, Object> body,
+            Authentication authentication) {
+        String statusStr = (String) body.get("status");
+        FinishedProductStatus newStatus = FinishedProductStatus.valueOf(statusStr);
+        FinishedProduct updated = finishedProductService.updateStatus(id, newStatus, authentication.getName());
+        Map<String, Object> response = Map.of(
+            "id", updated.getId(),
+            "status", updated.getStatus().name()
+        );
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/near-expiry")

@@ -90,6 +90,7 @@ public class DashboardSummaryService {
             List<FinishedProduct> finishedProducts = finishedProductRepository.findAll();
             long nearExpiryCount = finishedProducts.stream()
                     .filter(fp -> fp.getExpiryDate() != null && fp.getStatus() != FinishedProductStatus.EXPIRED 
+                            && fp.getStatus() != FinishedProductStatus.OUT_OF_STOCK
                             && !fp.getExpiryDate().isBefore(today) && !fp.getExpiryDate().isAfter(plus30))
                     .count();
 

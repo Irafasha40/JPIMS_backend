@@ -1,6 +1,7 @@
 package com.whizupp.jpims.dto.request;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -30,6 +31,7 @@ public class RecipeRequest {
 
     private String status;
     private String notes;
+    private Integer shelfLifeDays;
 
     @NotEmpty(message = "Ingredients are required")
     @Valid
@@ -40,11 +42,12 @@ public class RecipeRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RecipeIngredientRequest {
-        @NotNull(message = "Raw material ID is required")
+        @NotNull(message = "Material ID is required")
         private UUID materialId;
 
         @NotNull(message = "Quantity is required")
-        @Positive(message = "Quantity must be positive")
+        @DecimalMin(value = "0.0001", message = "Quantity must be greater than zero")
         private BigDecimal quantity;
     }
 }
+

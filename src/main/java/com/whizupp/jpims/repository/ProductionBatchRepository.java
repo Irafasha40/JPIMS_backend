@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 public interface ProductionBatchRepository extends JpaRepository<ProductionBatch, UUID> {
     Optional<ProductionBatch> findTopByBatchNumberStartingWithOrderByBatchNumberDesc(String prefix);
     long countByStatus(BatchStatus status);
+    long countByRecipeId(UUID recipeId);
 
     @Query("""
             SELECT b FROM ProductionBatch b

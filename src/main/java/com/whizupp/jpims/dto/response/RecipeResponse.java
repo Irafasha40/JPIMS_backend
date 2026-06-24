@@ -19,6 +19,7 @@ public class RecipeResponse {
     private BigDecimal baseQuantity;
     private String status;
     private String notes;
+    private Integer shelfLifeDays;
     private List<RecipeIngredientResponse> ingredients;
 
     @Data
@@ -32,3 +33,4 @@ public class RecipeResponse {
         private String unitOfMeasure;
     }
 }
+

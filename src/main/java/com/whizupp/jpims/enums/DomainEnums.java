@@ -57,7 +57,7 @@ public final class DomainEnums {
     }
 
     public enum FinishedProductStatus {
-        AVAILABLE, NEAR_EXPIRY, EXPIRED, RECALLED
+        AVAILABLE, NEAR_EXPIRY, EXPIRED, OUT_OF_STOCK, RECALLED
     }
 
     public enum FinishedProductMovementType {

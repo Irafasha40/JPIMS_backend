@@ -114,6 +114,9 @@ public class BatchService {
                 .lossReason(batch.getLossReason())
                 .status(batch.getStatus() != null ? batch.getStatus().name() : null)
                 .productionDate(batch.getProductionDate())
+                .recipeId(batch.getRecipe() != null ? batch.getRecipe().getId() : null)
+                .recipeName(batch.getRecipe() != null ? batch.getRecipe().getName() : null)
+                .shelfLifeDays(batch.getRecipe() != null ? batch.getRecipe().getShelfLifeDays() : null)
                 .assignedTo(batch.getCreatedBy() != null ? batch.getCreatedBy() : "—")
                 .finishedGoodsTransferred(batchCompletionService.hasFinishedGoods(batch.getId()))
                 .ingredients(lines)
@@ -146,6 +149,7 @@ public class BatchService {
                 .targetQuantity(targetQuantity)
                 .status(BatchStatus.PLANNED)
                 .productionDate(LocalDate.now())
+                .recipe(recipe)
                 .build());
 
         List<Map<String, Object>> shortfalls = new ArrayList<>();
@@ -185,6 +189,7 @@ public class BatchService {
         response.put("productName", batch.getProductName());
         response.put("targetQuantity", batch.getTargetQuantity());
         response.put("status", batch.getStatus());
+        response.put("recipeId", recipeId);
         response.put("shortfalls", shortfalls);
         return response;
     }

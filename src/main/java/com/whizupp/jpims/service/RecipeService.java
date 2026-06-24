@@ -7,6 +7,7 @@ import com.whizupp.jpims.dto.request.RecipeRequest;
 import com.whizupp.jpims.enums.DomainEnums.RecipeStatus;
 import com.whizupp.jpims.exception.InvalidOperationException;
 import com.whizupp.jpims.exception.ResourceNotFoundException;
+import com.whizupp.jpims.repository.ProductionBatchRepository;
 import com.whizupp.jpims.repository.RawMaterialRepository;
 import com.whizupp.jpims.repository.RecipeIngredientRepository;
 import com.whizupp.jpims.repository.RecipeRepository;
@@ -26,6 +27,7 @@ public class RecipeService {
     private final RecipeRepository recipeRepository;
     private final RecipeIngredientRepository recipeIngredientRepository;
     private final RawMaterialRepository rawMaterialRepository;
+    private final ProductionBatchRepository productionBatchRepository;
 
     public Page<Recipe> list(Pageable pageable) {
         return recipeRepository.findAll(pageable);
@@ -76,6 +78,7 @@ public class RecipeService {
         recipe.setProductName(request.getProductName());
         recipe.setBaseQuantity(request.getBaseQuantity());
         recipe.setNotes(request.getNotes());
+        recipe.setShelfLifeDays(request.getShelfLifeDays());
         return recipeRepository.save(recipe);
     }
 
@@ -114,6 +117,16 @@ public class RecipeService {
     }
 
     @Transactional
+    public void deleteRecipe(UUID id) {
+        Recipe recipe = getRecipe(id);
+        if (productionBatchRepository.countByRecipeId(id) > 0) {
+            throw new InvalidOperationException("Recipe is used by production batches and cannot be deleted");
+        }
+        recipeIngredientRepository.deleteByRecipeId(id);
+        recipeRepository.delete(recipe);
+    }
+
+    @Transactional
     public Recipe cloneRecipe(UUID sourceId) {
         Recipe source = getRecipe(sourceId);
         Recipe cloned = Recipe.builder()
@@ -122,6 +135,7 @@ public class RecipeService {
                 .baseQuantity(source.getBaseQuantity())
                 .status(RecipeStatus.DRAFT)
                 .notes(source.getNotes())
+                .shelfLifeDays(source.getShelfLifeDays())
                 .build();
         Recipe saved = recipeRepository.save(cloned);
 

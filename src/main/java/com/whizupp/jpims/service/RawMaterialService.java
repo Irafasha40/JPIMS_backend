@@ -11,6 +11,7 @@ import com.whizupp.jpims.repository.RawMaterialRepository;
 import com.whizupp.jpims.repository.StockMovementRepository;
 import com.whizupp.jpims.repository.UserRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -65,6 +66,7 @@ public class RawMaterialService {
         material.setMinimumThreshold(request.getMinimumThreshold());
         material.setCostPerUnit(request.getCostPerUnit());
         material.setSupplier(request.getSupplier());
+        material.setExpiryDate(request.getExpiryDate());
         return rawMaterialRepository.save(material);
     }
 
@@ -82,6 +84,29 @@ public class RawMaterialService {
         BigDecimal quantity = parsePositiveQuantity(quantityRaw);
 
         material.setCurrentStock(material.getCurrentStock().add(quantity));
+        RawMaterial saved = rawMaterialRepository.save(material);
+
+        stockMovementRepository.save(StockMovement.builder()
+                .rawMaterial(saved)
+                .recordedBy(actor)
+                .type(StockMovementType.STOCK_IN)
+                .quantity(quantity)
+                .referenceNumber("MANUAL-STOCK-IN")
+                .date(OffsetDateTime.now())
+                .notes(notes)
+                .build());
+
+        return saved;
+    }
+
+    @Transactional
+    public RawMaterial stockInWithExpiry(UUID id, String quantityRaw, String notes, String actorEmail, LocalDate expiryDate) {
+        RawMaterial material = get(id);
+        User actor = resolveUser(actorEmail);
+        BigDecimal quantity = parsePositiveQuantity(quantityRaw);
+
+        material.setCurrentStock(material.getCurrentStock().add(quantity));
+        material.setExpiryDate(expiryDate);
         RawMaterial saved = rawMaterialRepository.save(material);
 
         stockMovementRepository.save(StockMovement.builder()

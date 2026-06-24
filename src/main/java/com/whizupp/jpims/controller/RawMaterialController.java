@@ -10,6 +10,7 @@ import com.whizupp.jpims.dto.request.PurchaseOrderReceiveRequest;
 import com.whizupp.jpims.dto.response.PurchaseOrderDetailResponse;
 import com.whizupp.jpims.dto.response.PurchaseOrderSummaryResponse;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -78,6 +79,7 @@ public class RawMaterialController {
     public ResponseEntity<Map<String, Object>> stockIn(@PathVariable UUID id, @RequestBody Map<String, Object> body, Authentication authentication) {
         Number quantity = (Number) body.getOrDefault("quantity", 0);
         String notes = String.valueOf(body.getOrDefault("notes", "Manual stock-in"));
+        String expiryStr = (String) body.get("expiryDate");
         RawMaterial updated = rawMaterialService.stockIn(id, quantity.toString(), notes, authentication.getName());
         return ResponseEntity.ok(Map.of("id", id, "currentStock", updated.getCurrentStock()));
     }

@@ -38,4 +38,6 @@ public class Recipe extends BaseAuditEntity {
     private BigDecimal calories;
     private BigDecimal sugarContent;
     private BigDecimal vitaminC;
+
+    private Integer shelfLifeDays;
 }

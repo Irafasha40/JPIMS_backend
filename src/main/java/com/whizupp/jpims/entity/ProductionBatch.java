@@ -1,6 +1,7 @@
 package com.whizupp.jpims.entity;
 
 import com.whizupp.jpims.enums.DomainEnums.BatchStatus;
+import com.whizupp.jpims.entity.Recipe;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -36,4 +37,8 @@ public class ProductionBatch extends BaseAuditEntity {
     private LocalDate productionDate;
     private OffsetDateTime startTime;
     private OffsetDateTime completionTime;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recipe_id")
+    private Recipe recipe;
 }
