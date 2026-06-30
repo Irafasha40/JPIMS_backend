@@ -37,6 +37,8 @@ public class ProductionBatch extends BaseAuditEntity {
     private LocalDate productionDate;
     private OffsetDateTime startTime;
     private OffsetDateTime completionTime;
+    @Builder.Default
+    private Boolean stockApproved = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recipe_id")

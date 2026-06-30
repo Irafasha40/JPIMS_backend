@@ -5,6 +5,8 @@ import com.whizupp.jpims.dto.response.UserResponse;
 import com.whizupp.jpims.entity.User;
 import com.whizupp.jpims.service.UserService;
 import jakarta.validation.Valid;
+import com.whizupp.jpims.entity.PermissionMatrix;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -69,6 +71,12 @@ public class UserController {
         return ResponseEntity.ok(Map.of("id", id, "isLocked", false, "loginAttempts", user.getLoginAttempts()));
     }
 
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<Map<String, Object>> activate(@PathVariable UUID id) {
+        User user = userService.activateUser(id);
+        return ResponseEntity.ok(Map.of("id", id, "isActive", true));
+    }
+
     @PutMapping("/{id}/reset-password")
     public ResponseEntity<Map<String, Object>> adminResetPassword(@PathVariable UUID id) {
         String tempPassword = UUID.randomUUID().toString().substring(0, 12);
@@ -112,13 +120,14 @@ public class UserController {
     }
 
     @GetMapping("/permissions")
-    public ResponseEntity<Page<Map<String, Object>>> permissions(Pageable pageable) {
-        return ResponseEntity.ok(Page.empty(pageable));
+    public ResponseEntity<List<PermissionMatrix>> permissions() {
+        return ResponseEntity.ok(userService.getPermissions());
     }
 
     @PutMapping("/permissions")
-    public ResponseEntity<Map<String, Object>> updatePermissions(@RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(body);
+    public ResponseEntity<Map<String, Object>> updatePermissions(@RequestBody List<PermissionMatrix> body) {
+        userService.updatePermissions(body);
+        return ResponseEntity.ok(Map.of("message", "Permissions updated successfully"));
     }
 
     private UserResponse mapToResponse(User user) {

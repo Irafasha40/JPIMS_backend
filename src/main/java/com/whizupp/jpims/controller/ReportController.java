@@ -56,7 +56,7 @@ public class ReportController {
     }
 
     @GetMapping("/quality")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'PRODUCTION_MANAGER', 'QC_OFFICER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'QC_OFFICER')")
     @SuppressWarnings("unchecked")
     public ResponseEntity<?> quality(
             @RequestParam(required = false) String from,
@@ -89,7 +89,7 @@ public class ReportController {
     }
 
     @GetMapping("/inventory")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'PRODUCTION_MANAGER', 'INVENTORY_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'INVENTORY_MANAGER')")
     @SuppressWarnings("unchecked")
     public ResponseEntity<?> inventory(
             @RequestParam(required = false) String from,
@@ -121,7 +121,7 @@ public class ReportController {
     }
 
     @GetMapping("/sales")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'PRODUCTION_MANAGER', 'SALES_STAFF')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR', 'SALES_STAFF')")
     @SuppressWarnings("unchecked")
     public ResponseEntity<?> sales(
             @RequestParam(required = false) String from,
@@ -187,7 +187,7 @@ public class ReportController {
     }
 
     @GetMapping("/stock-movements")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR','PRODUCTION_MANAGER','INVENTORY_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR','INVENTORY_MANAGER')")
     public ResponseEntity<?> stockMovements(
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
@@ -219,27 +219,27 @@ public class ReportController {
     }
 
     @GetMapping("/scheduled")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR','PRODUCTION_MANAGER','INVENTORY_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR','INVENTORY_MANAGER')")
     public ResponseEntity<Page<Map<String, Object>>> scheduled(Pageable pageable) {
         return ResponseEntity.ok(reportService.getScheduledReports(pageable));
     }
 
     @PostMapping("/scheduled")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR','PRODUCTION_MANAGER','INVENTORY_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR','INVENTORY_MANAGER')")
     public ResponseEntity<Map<String, Object>> createScheduled(@RequestBody Map<String, Object> body,
             Authentication authentication) {
         return ResponseEntity.status(201).body(reportService.createScheduledReport(body, authentication.getName()));
     }
 
     @PutMapping("/scheduled/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR','PRODUCTION_MANAGER','INVENTORY_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR','INVENTORY_MANAGER')")
     public ResponseEntity<Map<String, Object>> updateScheduled(@PathVariable UUID id,
             @RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(reportService.updateScheduledReport(id, body));
     }
 
     @DeleteMapping("/scheduled/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATOR','PRODUCTION_MANAGER','INVENTORY_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATOR','INVENTORY_MANAGER')")
     public ResponseEntity<Map<String, Object>> deleteScheduled(@PathVariable UUID id) {
         reportService.deleteScheduledReport(id);
         return ResponseEntity.ok(Map.of("id", id));

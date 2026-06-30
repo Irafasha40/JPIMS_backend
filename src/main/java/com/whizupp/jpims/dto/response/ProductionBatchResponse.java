@@ -28,6 +28,7 @@ public class ProductionBatchResponse {
     private Integer shelfLifeDays;
     private String assignedTo;
     private Boolean finishedGoodsTransferred;
+    private Boolean stockApproved;
     private List<IngredientLine> ingredients;
 
     @Data

@@ -32,19 +32,19 @@ public class QualityController {
     private final BatchService batchService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR','PRODUCTION_MANAGER')")
+    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR')")
     public ResponseEntity<Page<QualityTestResponse>> list(Pageable pageable) {
         return ResponseEntity.ok(qualityService.list(pageable));
     }
 
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR','PRODUCTION_MANAGER')")
+    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR')")
     public ResponseEntity<Page<ProductionBatchResponse>> pending(Pageable pageable) {
         return ResponseEntity.ok(batchService.list(pageable, "QC_PENDING", null));
     }
 
     @GetMapping("/trends")
-    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR','PRODUCTION_MANAGER')")
+    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR')")
     public ResponseEntity<Map<String, Object>> trends() {
         return ResponseEntity.ok(Map.of("message", "QC trends endpoint scaffolded"));
     }
@@ -65,13 +65,13 @@ public class QualityController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR','PRODUCTION_MANAGER')")
+    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR')")
     public ResponseEntity<QualityTestResponse> get(@PathVariable UUID id) {
         return ResponseEntity.ok(qualityService.getById(id));
     }
 
     @GetMapping("/batch/{batchId}/certificate")
-    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR','PRODUCTION_MANAGER')")
+    @PreAuthorize("hasAnyRole('QC_OFFICER','ADMINISTRATOR')")
     public ResponseEntity<Map<String, Object>> certificate(@PathVariable UUID batchId) {
         return ResponseEntity.ok(Map.of("batchId", batchId));
     }

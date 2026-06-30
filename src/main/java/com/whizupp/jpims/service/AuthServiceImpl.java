@@ -45,6 +45,10 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService customUserDetailsService;
     private final AuditService auditService;
+    private final EmailService emailService;
+
+    @Value("${app.frontend.url:http://localhost:3000}")
+    private String frontendUrl;
 
     @Value("${app.auth.max-login-attempts:5}")
     private int maxLoginAttempts;
@@ -239,9 +243,13 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public MessageResponse forgotPassword(ForgotPasswordRequest request) {
         userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
-            user.setPasswordResetToken(UUID.randomUUID().toString());
+            String token = UUID.randomUUID().toString();
+            user.setPasswordResetToken(token);
             user.setPasswordResetExpiry(OffsetDateTime.now().plusMinutes(passwordResetExpiryMinutes));
             userRepository.save(user);
+
+            String resetLink = frontendUrl + "/forgot-password?token=" + token;
+            emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
         });
         return MessageResponse.builder().message("If that email exists, a reset link has been sent").build();
     }

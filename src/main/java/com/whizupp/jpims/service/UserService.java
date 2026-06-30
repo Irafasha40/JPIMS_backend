@@ -4,7 +4,11 @@ import com.whizupp.jpims.dto.request.RegisterRequest;
 import com.whizupp.jpims.entity.User;
 import com.whizupp.jpims.exception.InvalidOperationException;
 import com.whizupp.jpims.exception.ResourceNotFoundException;
+import com.whizupp.jpims.entity.PermissionMatrix;
+import com.whizupp.jpims.repository.PermissionMatrixRepository;
 import com.whizupp.jpims.repository.UserRepository;
+import com.whizupp.jpims.enums.DomainEnums.Role;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +25,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
+    private final PermissionMatrixRepository permissionMatrixRepository;
 
     public Page<User> list(Pageable pageable) {
         return userRepository.findAll(pageable);
@@ -76,6 +81,15 @@ public class UserService {
     }
 
     @Transactional
+    public User activateUser(UUID id) {
+        User user = getUser(id);
+        user.setIsActive(true);
+        User saved = userRepository.save(user);
+        auditService.log("activate", "USER_MANAGEMENT", saved.getId().toString(), "INACTIVE", "Activated user: " + saved.getEmail());
+        return saved;
+    }
+
+    @Transactional
     public User unlockUser(UUID id) {
         User user = getUser(id);
         user.setIsLocked(false);
@@ -93,5 +107,87 @@ public class UserService {
         User saved = userRepository.save(user);
         auditService.log("reset_password", "USER_MANAGEMENT", saved.getId().toString(), null, "Admin reset password for user: " + saved.getEmail());
         return saved;
+    }
+
+    @Transactional
+    public List<PermissionMatrix> getPermissions() {
+        List<PermissionMatrix> list = permissionMatrixRepository.findAll();
+        if (list.isEmpty()) {
+            List<String> modules = List.of(
+                "Dashboard", "Raw Materials", "Production", "Quality Control", 
+                "Finished Products", "Sales", "Recipes", "Suppliers", 
+                "Reports", "Notifications", "Users", "Security"
+            );
+            for (Role role : Role.values()) {
+                for (String mod : modules) {
+                    boolean canAccess = hasDefaultAccess(role, mod);
+                    PermissionMatrix pm = PermissionMatrix.builder()
+                            .role(role)
+                            .module(mod)
+                            .canView(canAccess)
+                            .canCreate(canAccess)
+                            .canEdit(canAccess)
+                            .canDelete(canAccess)
+                            .canExport(canAccess)
+                            .build();
+                    permissionMatrixRepository.save(pm);
+                }
+            }
+            list = permissionMatrixRepository.findAll();
+        }
+        return list;
+    }
+
+    private boolean hasDefaultAccess(Role role, String module) {
+        if (role == Role.ADMINISTRATOR) {
+            return true;
+        }
+        if ("Dashboard".equals(module)) {
+            return true;
+        }
+        switch (role) {
+            case PRODUCTION_MANAGER:
+                return "Raw Materials".equals(module) || "Production".equals(module) || "Recipes".equals(module) || "Reports".equals(module) || "Notifications".equals(module);
+            case INVENTORY_MANAGER:
+                return "Raw Materials".equals(module) || "Finished Products".equals(module) || "Suppliers".equals(module) || "Reports".equals(module) || "Notifications".equals(module);
+            case QC_OFFICER:
+                return "Quality Control".equals(module) || "Production".equals(module) || "Reports".equals(module) || "Notifications".equals(module);
+            case SALES_STAFF:
+                return "Sales".equals(module) || "Finished Products".equals(module) || "Notifications".equals(module) || "Reports".equals(module);
+            default:
+                return false;
+        }
+    }
+
+    @Transactional
+    public void updatePermissions(List<PermissionMatrix> requestList) {
+        List<PermissionMatrix> existingList = permissionMatrixRepository.findAll();
+        for (PermissionMatrix request : requestList) {
+            PermissionMatrix match = existingList.stream()
+                .filter(pm -> pm.getRole() == request.getRole() && pm.getModule().equalsIgnoreCase(request.getModule()))
+                .findFirst()
+                .orElse(null);
+            
+            if (match != null) {
+                match.setCanView(request.getCanView());
+                match.setCanCreate(request.getCanView());
+                match.setCanEdit(request.getCanView());
+                match.setCanDelete(request.getCanView());
+                match.setCanExport(request.getCanView());
+                permissionMatrixRepository.save(match);
+            } else {
+                PermissionMatrix pm = PermissionMatrix.builder()
+                        .role(request.getRole())
+                        .module(request.getModule())
+                        .canView(request.getCanView())
+                        .canCreate(request.getCanView())
+                        .canEdit(request.getCanView())
+                        .canDelete(request.getCanView())
+                        .canExport(request.getCanView())
+                        .build();
+                permissionMatrixRepository.save(pm);
+            }
+        }
+        auditService.log("update_permissions", "USER_MANAGEMENT", null, null, "Updated role permission matrix");
     }
 }

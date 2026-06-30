@@ -28,7 +28,7 @@ public class ProductionBatchController {
     private final BatchCompletionService batchCompletionService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR','QC_OFFICER')")
+    @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR','QC_OFFICER','INVENTORY_MANAGER')")
     public ResponseEntity<Page<ProductionBatchResponse>> list(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String productName,
@@ -43,7 +43,7 @@ public class ProductionBatchController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR','QC_OFFICER')")
+    @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR','QC_OFFICER','INVENTORY_MANAGER')")
     public ResponseEntity<ProductionBatchResponse> get(@PathVariable UUID id) {
         return ResponseEntity.ok(batchService.getBatch(id));
     }
@@ -60,6 +60,12 @@ public class ProductionBatchController {
         return ResponseEntity.ok(batchService.confirmIngredients(id, authentication.getName()));
     }
 
+    @PostMapping("/{id}/approve-stock")
+    @PreAuthorize("hasAnyRole('INVENTORY_MANAGER','ADMINISTRATOR')")
+    public ResponseEntity<ProductionBatchResponse> approveStock(@PathVariable UUID id, Authentication authentication) {
+        return ResponseEntity.ok(batchService.approveStock(id, authentication.getName()));
+    }
+
     @PutMapping("/{id}/yield")
     @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR')")
     public ResponseEntity<ProductionBatchResponse> recordYield(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
@@ -73,13 +79,13 @@ public class ProductionBatchController {
     }
 
     @GetMapping("/{id}/qc-results")
-    @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR','QC_OFFICER')")
+    @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR','QC_OFFICER','INVENTORY_MANAGER')")
     public ResponseEntity<Page<Map<String, Object>>> qcResults(@PathVariable UUID id, Pageable pageable) {
         return ResponseEntity.ok(Page.empty(pageable));
     }
 
     @GetMapping("/active")
-    @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR','QC_OFFICER')")
+    @PreAuthorize("hasAnyRole('PRODUCTION_MANAGER','ADMINISTRATOR','QC_OFFICER','INVENTORY_MANAGER')")
     public ResponseEntity<Page<ProductionBatchResponse>> active(Pageable pageable) {
         return ResponseEntity.ok(batchService.list(pageable, "IN_PROGRESS", null));
     }

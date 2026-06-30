@@ -10,4 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface StockMovementRepository extends JpaRepository<StockMovement, UUID> {
     @EntityGraph(attributePaths = {"rawMaterial", "recordedBy"})
     Page<StockMovement> findByRawMaterial_Id(UUID rawMaterialId, Pageable pageable);
+
+    java.util.List<StockMovement> findByProductionBatch_Id(UUID productionBatchId);
 }

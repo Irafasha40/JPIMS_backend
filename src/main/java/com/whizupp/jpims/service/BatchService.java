@@ -119,6 +119,7 @@ public class BatchService {
                 .shelfLifeDays(batch.getRecipe() != null ? batch.getRecipe().getShelfLifeDays() : null)
                 .assignedTo(batch.getCreatedBy() != null ? batch.getCreatedBy() : "—")
                 .finishedGoodsTransferred(batchCompletionService.hasFinishedGoods(batch.getId()))
+                .stockApproved(Boolean.TRUE.equals(batch.getStockApproved()))
                 .ingredients(lines)
                 .build();
     }
@@ -203,6 +204,10 @@ public class BatchService {
 
         if (batch.getStatus() != BatchStatus.PLANNED && batch.getStatus() != BatchStatus.ISSUED) {
             throw new InvalidOperationException("Ingredients can only be confirmed for planned batches");
+        }
+
+        if (!Boolean.TRUE.equals(batch.getStockApproved())) {
+            throw new InvalidOperationException("Stock must be approved by an Inventory Manager before ingredients can be confirmed.");
         }
 
         List<BatchIngredient> ingredients = batchIngredientRepository.findByProductionBatchIdWithMaterial(batchId);
@@ -354,6 +359,19 @@ public class BatchService {
 
         notificationService.notifyQcOfficers(batch);
         log.info("Batch {} sent to QC — status QC_PENDING", batch.getBatchNumber());
+        return getBatch(batchId);
+    }
+
+    @Transactional
+    public ProductionBatchResponse approveStock(UUID batchId, String actorEmail) {
+        ProductionBatch batch = productionBatchRepository.findById(batchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Batch not found"));
+        if (batch.getStatus() != BatchStatus.PLANNED) {
+            throw new InvalidOperationException("Stock can only be approved for planned batches");
+        }
+        batch.setStockApproved(true);
+        productionBatchRepository.save(batch);
+        log.info("Stock approved for batch {} by {}", batch.getBatchNumber(), actorEmail);
         return getBatch(batchId);
     }
 }

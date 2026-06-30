@@ -15,6 +15,9 @@ import com.whizupp.jpims.exception.ResourceNotFoundException;
 import com.whizupp.jpims.repository.ProductionBatchRepository;
 import com.whizupp.jpims.repository.QualityTestRepository;
 import com.whizupp.jpims.repository.UserRepository;
+import com.whizupp.jpims.repository.StockMovementRepository;
+import com.whizupp.jpims.entity.StockMovement;
+import com.whizupp.jpims.enums.DomainEnums.StockMovementType;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -35,6 +38,7 @@ public class QualityService {
     private final UserRepository userRepository;
     private final BatchCompletionService batchCompletionService;
     private final NotificationService notificationService;
+    private final StockMovementRepository stockMovementRepository;
 
     @Value("${app.qc.ph-min}")
     private BigDecimal phMin;
@@ -94,12 +98,34 @@ public class QualityService {
         if (result == TestResult.PASS && batch.getStatus() == BatchStatus.QC_PENDING) {
             String actorEmail = saved.getTestedBy() != null ? saved.getTestedBy().getEmail() : "system@whizupp.local";
             batchCompletionService.completeAfterQcPass(batch, actorEmail);
+            revertBatchMaterialsFromWastage(batch);
         } else if (result == TestResult.FAIL) {
             notificationService.notifyQcFailed(batch);
             log.info("Batch {} QC FAIL — remains QC_PENDING", batch.getBatchNumber());
+            recordBatchMaterialsAsWastage(batch);
         }
 
         return saved;
+    }
+
+    private void recordBatchMaterialsAsWastage(ProductionBatch batch) {
+        java.util.List<StockMovement> movements = stockMovementRepository.findByProductionBatch_Id(batch.getId());
+        for (StockMovement mv : movements) {
+            if (mv.getType() == StockMovementType.STOCK_OUT) {
+                mv.setNotes("Wastage: Batch failed QC check - " + batch.getBatchNumber());
+                stockMovementRepository.save(mv);
+            }
+        }
+    }
+
+    private void revertBatchMaterialsFromWastage(ProductionBatch batch) {
+        java.util.List<StockMovement> movements = stockMovementRepository.findByProductionBatch_Id(batch.getId());
+        for (StockMovement mv : movements) {
+            if (mv.getType() == StockMovementType.STOCK_OUT) {
+                mv.setNotes("Auto stock-out from batch ingredient confirmation");
+                stockMovementRepository.save(mv);
+            }
+        }
     }
 
     private TestResult calculate(QualityTest test) {
