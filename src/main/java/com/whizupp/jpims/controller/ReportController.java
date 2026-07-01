@@ -94,8 +94,9 @@ public class ReportController {
     public ResponseEntity<?> inventory(
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
+            @RequestParam(required = false) String type,
             @RequestParam(required = false) String export) {
-        Map<String, Object> report = reportService.getInventoryReport(from, to);
+        Map<String, Object> report = reportService.getInventoryReport(from, to, type);
         String generatedBy = getCreatedBy();
         if ("pdf".equalsIgnoreCase(export)) {
             byte[] pdfBytes = ReportGenerator.generatePdf(

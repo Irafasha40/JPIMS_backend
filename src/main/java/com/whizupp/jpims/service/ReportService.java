@@ -311,23 +311,28 @@ public class ReportService {
         return report;
     }
 
-    public Map<String, Object> getInventoryReport(String from, String to) {
+    public Map<String, Object> getInventoryReport(String from, String to, String type) {
         List<RawMaterial> rawMaterials = rawMaterialRepository.findAll();
         List<FinishedProduct> finishedProducts = finishedProductRepository.findAll();
+
+        boolean includeRaw = (type == null || type.isEmpty() || "ALL".equalsIgnoreCase(type) || "RAW_MATERIAL".equalsIgnoreCase(type));
+        boolean includeFinished = (type == null || type.isEmpty() || "ALL".equalsIgnoreCase(type) || "FINISHED_GOOD".equalsIgnoreCase(type) || "FINISHED_PRODUCT".equalsIgnoreCase(type));
 
         BigDecimal totalRawMaterialsValuation = BigDecimal.ZERO;
         long itemsBelowMinThreshold = 0;
         Map<String, BigDecimal> rawValuation = new LinkedHashMap<>();
 
-        for (RawMaterial rm : rawMaterials) {
-            BigDecimal stock = rm.getCurrentStock() != null ? rm.getCurrentStock() : BigDecimal.ZERO;
-            BigDecimal cost = rm.getCostPerUnit() != null ? rm.getCostPerUnit() : BigDecimal.ZERO;
-            BigDecimal val = stock.multiply(cost);
-            totalRawMaterialsValuation = totalRawMaterialsValuation.add(val);
-            rawValuation.put(rm.getName(), val);
+        if (includeRaw) {
+            for (RawMaterial rm : rawMaterials) {
+                BigDecimal stock = rm.getCurrentStock() != null ? rm.getCurrentStock() : BigDecimal.ZERO;
+                BigDecimal cost = rm.getCostPerUnit() != null ? rm.getCostPerUnit() : BigDecimal.ZERO;
+                BigDecimal val = stock.multiply(cost);
+                totalRawMaterialsValuation = totalRawMaterialsValuation.add(val);
+                rawValuation.put(rm.getName(), val);
 
-            if (rm.getMinimumThreshold() != null && stock.compareTo(rm.getMinimumThreshold()) <= 0) {
-                itemsBelowMinThreshold++;
+                if (rm.getMinimumThreshold() != null && stock.compareTo(rm.getMinimumThreshold()) <= 0) {
+                    itemsBelowMinThreshold++;
+                }
             }
         }
 
@@ -340,69 +345,79 @@ public class ReportService {
         LocalDate plus7 = today.plusDays(7);
         LocalDate plus30 = today.plusDays(30);
 
-        for (FinishedProduct fp : finishedProducts) {
-            BigDecimal qty = fp.getQuantity() != null ? fp.getQuantity() : BigDecimal.ZERO;
-            BigDecimal cost = fp.getUnitCost() != null ? fp.getUnitCost() : BigDecimal.ZERO;
-            BigDecimal val = qty.multiply(cost);
-            totalFinishedGoodsValuation = totalFinishedGoodsValuation.add(val);
-            finishedValuation.put(fp.getProductName(),
-                    finishedValuation.getOrDefault(fp.getProductName(), BigDecimal.ZERO).add(val));
+        if (includeFinished) {
+            for (FinishedProduct fp : finishedProducts) {
+                BigDecimal qty = fp.getQuantity() != null ? fp.getQuantity() : BigDecimal.ZERO;
+                BigDecimal cost = fp.getUnitCost() != null ? fp.getUnitCost() : BigDecimal.ZERO;
+                BigDecimal val = qty.multiply(cost);
+                totalFinishedGoodsValuation = totalFinishedGoodsValuation.add(val);
+                finishedValuation.put(fp.getProductName(),
+                        finishedValuation.getOrDefault(fp.getProductName(), BigDecimal.ZERO).add(val));
 
-            if (fp.getExpiryDate() != null
-                    && fp.getStatus() != FinishedProductStatus.EXPIRED
-                    && fp.getStatus() != FinishedProductStatus.OUT_OF_STOCK) {
-                if (!fp.getExpiryDate().isBefore(today) && !fp.getExpiryDate().isAfter(plus7)) {
-                    nearExpiry7Days++;
-                } else if (!fp.getExpiryDate().isBefore(today) && !fp.getExpiryDate().isAfter(plus30)) {
-                    nearExpiry30Days++;
+                if (fp.getExpiryDate() != null
+                        && fp.getStatus() != FinishedProductStatus.EXPIRED
+                        && fp.getStatus() != FinishedProductStatus.OUT_OF_STOCK) {
+                    if (!fp.getExpiryDate().isBefore(today) && !fp.getExpiryDate().isAfter(plus7)) {
+                        nearExpiry7Days++;
+                    } else if (!fp.getExpiryDate().isBefore(today) && !fp.getExpiryDate().isAfter(plus30)) {
+                        nearExpiry30Days++;
+                    }
                 }
             }
         }
 
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("rawMaterialsValuation", rawValuation);
-        summary.put("totalRawMaterialsValuation", totalRawMaterialsValuation);
-        summary.put("itemsBelowMinThreshold", itemsBelowMinThreshold);
-        summary.put("finishedGoodsValuation", finishedValuation);
-        summary.put("totalFinishedGoodsValuation", totalFinishedGoodsValuation);
-        summary.put("nearExpiryWithin7Days", nearExpiry7Days);
-        summary.put("nearExpiryWithin30Days", nearExpiry30Days);
-
-        List<Map<String, Object>> dataList = new ArrayList<>();
-        for (RawMaterial rm : rawMaterials) {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("type", "RAW_MATERIAL");
-            map.put("id", rm.getId());
-            map.put("name", rm.getName());
-            map.put("category", rm.getCategory());
-            map.put("currentStock", rm.getCurrentStock());
-            map.put("unit", rm.getUnitOfMeasure());
-            map.put("costPerUnit", rm.getCostPerUnit());
-            BigDecimal stock = rm.getCurrentStock() != null ? rm.getCurrentStock() : BigDecimal.ZERO;
-            BigDecimal cost = rm.getCostPerUnit() != null ? rm.getCostPerUnit() : BigDecimal.ZERO;
-            map.put("totalValue", stock.multiply(cost));
-            map.put("minimumThreshold", rm.getMinimumThreshold());
-            map.put("status", stock.compareTo(rm.getMinimumThreshold()) <= 0 ? "LOW_STOCK" : "OK");
-            map.put("expiryDate", null);
-            dataList.add(map);
+        if (includeRaw) {
+            summary.put("rawMaterialsValuation", rawValuation);
+            summary.put("totalRawMaterialsValuation", totalRawMaterialsValuation);
+            summary.put("itemsBelowMinThreshold", itemsBelowMinThreshold);
+        }
+        if (includeFinished) {
+            summary.put("finishedGoodsValuation", finishedValuation);
+            summary.put("totalFinishedGoodsValuation", totalFinishedGoodsValuation);
+            summary.put("nearExpiryWithin7Days", nearExpiry7Days);
+            summary.put("nearExpiryWithin30Days", nearExpiry30Days);
         }
 
-        for (FinishedProduct fp : finishedProducts) {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("type", "FINISHED_GOOD");
-            map.put("id", fp.getId());
-            map.put("name", fp.getProductName());
-            map.put("category", fp.getFlavor());
-            map.put("currentStock", fp.getQuantity());
-            map.put("unit", "Bottles");
-            map.put("costPerUnit", fp.getUnitCost());
-            BigDecimal qty = fp.getQuantity() != null ? fp.getQuantity() : BigDecimal.ZERO;
-            BigDecimal cost = fp.getUnitCost() != null ? fp.getUnitCost() : BigDecimal.ZERO;
-            map.put("totalValue", qty.multiply(cost));
-            map.put("minimumThreshold", BigDecimal.ZERO);
-            map.put("status", fp.getStatus() != null ? fp.getStatus().name() : "AVAILABLE");
-            map.put("expiryDate", fp.getExpiryDate() != null ? fp.getExpiryDate().toString() : null);
-            dataList.add(map);
+        List<Map<String, Object>> dataList = new ArrayList<>();
+        if (includeRaw) {
+            for (RawMaterial rm : rawMaterials) {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("type", "RAW_MATERIAL");
+                map.put("id", rm.getId());
+                map.put("name", rm.getName());
+                map.put("category", rm.getCategory());
+                map.put("currentStock", rm.getCurrentStock());
+                map.put("unit", rm.getUnitOfMeasure());
+                map.put("costPerUnit", rm.getCostPerUnit());
+                BigDecimal stock = rm.getCurrentStock() != null ? rm.getCurrentStock() : BigDecimal.ZERO;
+                BigDecimal cost = rm.getCostPerUnit() != null ? rm.getCostPerUnit() : BigDecimal.ZERO;
+                map.put("totalValue", stock.multiply(cost));
+                map.put("minimumThreshold", rm.getMinimumThreshold());
+                map.put("status", stock.compareTo(rm.getMinimumThreshold()) <= 0 ? "LOW_STOCK" : "OK");
+                map.put("expiryDate", null);
+                dataList.add(map);
+            }
+        }
+
+        if (includeFinished) {
+            for (FinishedProduct fp : finishedProducts) {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("type", "FINISHED_GOOD");
+                map.put("id", fp.getId());
+                map.put("name", fp.getProductName());
+                map.put("category", fp.getFlavor());
+                map.put("currentStock", fp.getQuantity());
+                map.put("unit", "Bottles");
+                map.put("costPerUnit", fp.getUnitCost());
+                BigDecimal qty = fp.getQuantity() != null ? fp.getQuantity() : BigDecimal.ZERO;
+                BigDecimal cost = fp.getUnitCost() != null ? fp.getUnitCost() : BigDecimal.ZERO;
+                map.put("totalValue", qty.multiply(cost));
+                map.put("minimumThreshold", BigDecimal.ZERO);
+                map.put("status", fp.getStatus() != null ? fp.getStatus().name() : "AVAILABLE");
+                map.put("expiryDate", fp.getExpiryDate() != null ? fp.getExpiryDate().toString() : null);
+                dataList.add(map);
+            }
         }
 
         Map<String, Object> report = new LinkedHashMap<>();

@@ -43,6 +43,7 @@ public class FinishedProductService {
     private final RawMaterialService rawMaterialService;
     private final UserRepository userRepository;
     private final PackagingService packagingService;
+    private final ProductCatalogService productCatalogService;
 
     @Value("${app.packaging.bottle-material-name:Empty Bottle (1L)}")
     private String bottleMaterialName;
@@ -94,6 +95,14 @@ public class FinishedProductService {
                 : this.shelfLifeDays;
         LocalDate expiry = productionDate.plusDays(shelfLifeDays);
 
+        // Auto-apply unit cost from product catalog if a matching entry exists
+        BigDecimal catalogCost = productCatalogService.findCostByProductName(batch.getProductName())
+                .orElse(null);
+        if (catalogCost != null) {
+            log.info("Auto-applying catalog unit cost {} for product '{}'",
+                    catalogCost, batch.getProductName());
+        }
+
         FinishedProduct product = FinishedProduct.builder()
                 .productionBatch(batch)
                 .productName(batch.getProductName())
@@ -106,6 +115,7 @@ public class FinishedProductService {
                 .expiryDate(expiry)
                 .storageLocation("Cold Store A")
                 .status(FinishedProductStatus.AVAILABLE)
+                .unitCost(catalogCost)
                 .build();
 
         FinishedProduct saved = finishedProductRepository.save(product);
